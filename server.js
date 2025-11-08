@@ -192,8 +192,8 @@ app.get('/:id', (req, res) => {
   const metaPath = path.join(UPLOAD_DIR, id + '.json');
   if (!fs.existsSync(metaPath)) return res.status(404).send('Файл удалён');
   const meta = fs.readJsonSync(metaPath);
-  meta.downloads++;
-High fs.writeJsonSync(metaPath, meta);
+  meta.downloads++; // ИСПРАВЛЕНО: было "High"
+  fs.writeJsonSync(metaPath, meta); // ИСПРАВЛЕНО
   const sizeGB = (meta.size / (1024 * 1024 * 1024)).toFixed(2);
   res.send(`
     <html><head><title>${meta.name}</title>

@@ -3,15 +3,21 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs-extra');
+const cors = require('cors'); // ← НОВОЕ
 
 const app = express();
 
-// ПОРТ И ХОСТ — ДЛЯ RAILWAY
+// ВКЛЮЧАЕМ CORS И JSON
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ПОРТ
 const PORT = process.env.PORT || 3000;
 const UPLOAD_DIR = '/app/uploads';
 fs.ensureDirSync(UPLOAD_DIR);
 
-// MULTER — ЗАГРУЗКА
+// MULTER
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => {
@@ -22,10 +28,10 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 500 * 1024 * 1024 } // 500 МБ
+  limits: { fileSize: 500 * 1024 * 1024 }
 });
 
-// ГЛАВНАЯ — FASTDROP
+// ГЛАВНАЯ
 app.get('/', (req, res) => {
   res.send(`
 <!DOCTYPE html>
@@ -92,43 +98,22 @@ app.get('/', (req, res) => {
     const link = document.getElementById('link');
 
     // Перетаскивание
-    ['dragover', 'dragenter'].forEach(event => {
-      dropzone.addEventListener(event, e => {
-        e.preventDefault();
-        dropzone.classList.add('dragover');
-      });
-    });
-
-    ['dragleave', 'drop'].forEach(event => {
-      dropzone.addEventListener(event, e => {
-        dropzone.classList.remove('dragover');
-      });
-    });
-
-    dropzone.addEventListener('drop', e => {
-      e.preventDefault();
-      const file = e.dataTransfer.files[0];
-      if (file) uploadFile(file);
-    });
-
-    // Клик
+    ['dragover', 'dragenter'].forEach(event => dropzone.addEventListener(event, e => { e.preventDefault(); dropzone.classList.add('dragover'); }));
+    ['dragleave', 'drop'].forEach(event => dropzone.addEventListener(event, () => dropzone.classList.remove('dragover')));
+    dropzone.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]); });
     dropzone.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', () => {
-      const file = fileInput.files[0];
-      if (file) uploadFile(file);
-    });
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) uploadFile(fileInput.files[0]); });
 
-    // Загрузка
     function uploadFile(file) {
       const formData = new FormData();
       formData.append('file', file);
-
       progress.style.display = 'block';
       result.style.display = 'none';
       dropzone.innerHTML = '<i class="fas fa-spinner fa-spin"></i><p>Загружаем...</p>';
 
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/upload');
+      xhr.open('POST', '/upload', true);
+      xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 
       xhr.upload.onprogress = e => {
         if (e.lengthComputable) {
@@ -146,13 +131,15 @@ app.get('/', (req, res) => {
           progress.style.display = 'none';
           dropzone.innerHTML = '<i class="fas fa-check"></i><p>Готово!</p><button onclick="document.getElementById(\'fileInput\').click()">ЕЩЁ</button>';
         } else {
+          alert('Ошибка: ' + xhr.status);
           dropzone.innerHTML = '<p style="color:#ff6b6b">Ошибка загрузки</p><button onclick="location.reload()">Попробовать снова</button>';
           progress.style.display = 'none';
         }
       };
 
       xhr.onerror = () => {
-        dropzone.innerHTML = '<p style="color:#ff6b6b">Нет соединения</p><button onclick="location.reload()">Попробовать снова</button>';
+        alert('Нет соединения с сервером');
+        dropzone.innerHTML = '<p style="color:#ff6b6b">Нет сети</p><button onclick="location.reload()">Попробовать снова</button>';
         progress.style.display = 'none';
       };
 
@@ -166,63 +153,43 @@ app.get('/', (req, res) => {
 
 // ЗАГРУЗКА
 app.post('/upload', upload.single('file'), (req, res) => {
-  const id = req.file.filename.split('.')[0];
-  const meta = {
-    name: req.file.originalname,
-    size: req.file.size,
-    uploaded: new Date().toISOString()
-  };
-  fs.writeJsonSync(path.join(UPLOAD_DIR, id + '.json'), meta);
+  try {
+    const id = req.file.filename.split('.')[0];
+    const meta = { name: req.file.originalname, size: req.file.size, uploaded: new Date().toISOString() };
+    fs.writeJsonSync(path.join(UPLOAD_DIR, id + '.json'), meta);
 
-  // Удаление через 7 дней
-  setTimeout(() => {
-    fs.remove(path.join(UPLOAD_DIR, id + path.extname(req.file.originalname))).catch(() => {});
-    fs.remove(path.join(UPLOAD_DIR, id + '.json')).catch(() => {});
-  }, 7 * 24 * 60 * 60 * 1000);
+    setTimeout(() => {
+      fs.remove(path.join(UPLOAD_DIR, id + path.extname(req.file.originalname))).catch(() => {});
+      fs.remove(path.join(UPLOAD_DIR, id + '.json')).catch(() => {});
+    }, 7 * 24 * 60 * 60 * 1000);
 
-  res.json({ id });
+    res.json({ id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
 });
 
-// СКАЧИВАНИЕ — СТРАНИЦА
+// СКАЧИВАНИЕ
 app.get('/:id', (req, res) => {
   const id = req.params.id;
   const metaPath = path.join(UPLOAD_DIR, id + '.json');
-  if (!fs.existsSync(metaPath)) return res.status(404).send('<h1 style="color:#ff6b6b">Файл удалён</h1><a href="/">На главную</a>');
+  if (!fs.existsSync(metaPath)) return res.status(404).send('Файл удалён');
   const meta = fs.readJsonSync(metaPath);
   const sizeMB = (meta.size / (1024 * 1024)).toFixed(1);
-  res.send(`
-<!DOCTYPE html><html><head><title>${meta.name}</title>
-<style>
-  body{font-family:'Inter',sans-serif;background:#0a0a1a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-  .c{background:#1a1a2e;padding:40px;border-radius:24px;max-width:400px;text-align:center;box-shadow:0 20px 40px rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2)}
-  h2{margin:16px 0;font-size:22px;color:#00d4ff}
-  .m{color:#94a3b8;font-size:15px;margin:8px 0}
-  .btn{display:inline-block;margin-top:24px;padding:16px 32px;background:linear-gradient(90deg,#00d4ff,#00ff88);color:#0a0a1a;text-decoration:none;border-radius:12px;font-weight:700;font-size:18px;transition:all .3s}
-  .btn:hover{transform:translateY(-4px);box-shadow:0 12px 24px rgba(0,212,255,.4)}
-</style></head>
-<body><div class="c">
-  <h2>${meta.name}</h2>
-  <div class="m"><strong>${sizeMB} МБ</strong></div>
-  <div class="m">Скачивание через 2 сек...</div>
-  <a href="/dl/${id}" class="btn">СКАЧАТЬ</a>
-</div>
-<script>setTimeout(() => location.href="/dl/${id}", 2000);</script>
-</body></html>
-  `);
+  res.send(`<html><head><title>${meta.name}</title><style>body{background:#0a0a1a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;height:100vh;font-family:Inter}h2{color:#00d4ff}.btn{background:#00d4ff;color:#000;padding:16px 32px;border-radius:12px;text-decoration:none;font-weight:700}</style></head><body><div><h2>${meta.name}</h2><p>${sizeMB} МБ</p><p>Скачивание через 2 сек...</p><a href="/dl/${id}" class="btn">СКАЧАТЬ</a></div><script>setTimeout(() => location.href="/dl/${id}", 2000);</script></body></html>`);
 });
 
-// СКАЧИВАНИЕ — ФАЙЛ
 app.get('/dl/:id', (req, res) => {
   const id = req.params.id;
   const metaPath = path.join(UPLOAD_DIR, id + '.json');
   if (!fs.existsSync(metaPath)) return res.status(404).send('Файл удалён');
   const meta = fs.readJsonSync(metaPath);
   const filePath = path.join(UPLOAD_DIR, id + path.extname(meta.name));
-  res.setHeader('Content-Disposition', `attachment; filename="${meta.name}"`);
-  res.sendFile(filePath);
+  res.download(filePath, meta.name);
 });
 
-// ЗАПУСК — 100% ДЛЯ RAILWAY
+// ЗАПУСК
 app.listen(PORT, '0.0.0.0', () => {
   console.log('FASTDROP запущен на порту ' + PORT);
 });

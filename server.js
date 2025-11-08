@@ -216,7 +216,7 @@ app.get('/manifest.json', (req, res) => {
   res.json({
     name: "FASTDROP", short_name: "FASTDROP", start_url: "/", display: "standalone",
     background_color: "#0a0a1a", theme_color: "#00d4ff",
-    icons: [{ src: "https://img.freepik.com/premium-vector/fast-cloud-logo_412311-3418.jpg", sizes: "192x192", type: "image/png" }]
+    icons: [{ src: "/icon.png", sizes: "192x192", type: "image/png" }]
   });
 });
 

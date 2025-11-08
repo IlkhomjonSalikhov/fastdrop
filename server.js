@@ -3,16 +3,15 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs-extra');
-const moment = require('moment');
 
 const app = express();
 
-// Порт для Railway
+// ПОРТ И ХОСТ — ДЛЯ RAILWAY
 const PORT = process.env.PORT || 3000;
 const UPLOAD_DIR = '/app/uploads';
 fs.ensureDirSync(UPLOAD_DIR);
 
-// Настройка загрузки
+// MULTER — ЗАГРУЗКА
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => {
@@ -26,7 +25,7 @@ const upload = multer({
   limits: { fileSize: 500 * 1024 * 1024 } // 500 МБ
 });
 
-// Главная страница
+// ГЛАВНАЯ — FASTDROP
 app.get('/', (req, res) => {
   res.send(`
 <!DOCTYPE html>
@@ -34,67 +33,130 @@ app.get('/', (req, res) => {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Fileport</title>
+  <title>FASTDROP • 500 МБ</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <style>
-    :root { --p:#6366f1; --bg:#0f0f23; --c:#1a1a2e; --t:#e2e8f0; --tl:#94a3b8; --s:#10b981; }
+    :root { --p:#00d4ff; --bg:#0a0a1a; --c:#1a1a2e; --t:#e2e8f0; --tl:#94a3b8; --s:#00ff88; }
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#0f0f23,#1a1a2e);color:var(--t);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-    .box{background:var(--c);border-radius:24px;padding:40px;max-width:500px;width:100%;box-shadow:0 20px 40px rgba(0,0,0,.3);animation:f 0.6s ease-out}
-    @keyframes f{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
-    h1{font-size:28px;font-weight:700;background:linear-gradient(90deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:8px}
-    .sub{color:var(--tl);text-align:center;margin-bottom:32px;font-size:14px}
-    .dz{border:3px dashed #6366f1;border-radius:16px;padding:48px;text-align:center;cursor:pointer;transition:all .3s}
-    .dz:hover{border-color:#8b5cf6;background:rgba(99,102,241,.05);transform:translateY(-4px);box-shadow:0 10px 20px rgba(99,102,241,.2)}
-    .dz.dragover{border-color:var(--s);background:rgba(16,185,129,.1)}
-    .dz i{font-size:48px;color:#6366f1;margin-bottom:16px;display:block}
+    body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#0a0a1a,#1a1a2e);color:var(--t);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .box{background:var(--c);border-radius:24px;padding:40px;max-width:500px;width:100%;box-shadow:0 20px 40px rgba(0,212,255,.1);animation:f 0.8s ease-out;border:1px solid rgba(0,212,255,.2)}
+    @keyframes f{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+    h1{font-size:32px;font-weight:700;background:linear-gradient(90deg,#00d4ff,#00ff88);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:8px}
+    .sub{color:var(--tl);text-align:center;margin-bottom:32px;font-size:15px}
+    .dz{border:3px dashed #00d4ff;border-radius:16px;padding:48px;text-align:center;cursor:pointer;transition:all .3s;position:relative;overflow:hidden}
+    .dz:hover{border-color:#00ff88;background:rgba(0,255,136,.05);transform:translateY(-4px);box-shadow:0 12px 24px rgba(0,212,255,.3)}
+    .dz.dragover{border-color:var(--s);background:rgba(0,255,136,.15);animation:p 1.5s infinite}
+    @keyframes p{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+    .dz i{font-size:48px;color:#00d4ff;margin-bottom:16px;display:block;animation:bounce 2s infinite}
+    @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
     .dz p{color:var(--tl);margin-bottom:16px}
     .prog{margin-top:20px;display:none}
-    .bar{height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden}
-    .fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);width:0%;transition:width .3s}
-    .ptxt{text-align:center;margin-top:8px;font-size:14px;color:var(--tl)}
-    .res{margin-top:24px;padding:20px;background:rgba(16,185,129,.1);border-radius:12px;border:1px solid rgba(16,185,129,.3);display:none}
-    .res input{width:100%;padding:12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:white;font-family:monospace;margin-top:8px}
-    button{background:linear-gradient(90deg,var(--p),#4f46e5);color:white;border:none;padding:12px 24px;border-radius:8px;font-weight:600;cursor:pointer;transition:all .3s}
-    button:hover{transform:translateY(-2px);box-shadow:0 8px 16px rgba(99,102,241,.3)}
+    .bar{height:10px;background:rgba(255,255,255,.1);border-radius:5px;overflow:hidden}
+    .fill{height:100%;background:linear-gradient(90deg,#00d4ff,#00ff88);width:0%;transition:width .3s;border-radius:5px}
+    .ptxt{text-align:center;margin-top:8px;font-size:14px;color:var(--tl);font-weight:600}
+    .res{margin-top:24px;padding:20px;background:rgba(0,255,136,.1);border-radius:12px;border:1px solid rgba(0,255,136,.3);display:none;animation:f .5s}
+    .res input{width:100%;padding:14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:10px;color:white;font-family:monospace;margin-top:10px;font-size:15px}
+    button{background:linear-gradient(90deg,#00d4ff,#00ff88);color:#0a0a1a;border:none;padding:14px 28px;border-radius:10px;font-weight:700;cursor:pointer;transition:all .3s;font-size:16px}
+    button:hover{transform:translateY(-3px);box-shadow:0 10px 20px rgba(0,212,255,.4)}
   </style>
 </head>
 <body>
   <div class="box">
-    <h1>Fileport</h1>
+    <h1>FASTDROP</h1>
     <p class="sub">До 500 МБ • Бесплатно • 7 дней</p>
     <div class="dz" id="dz">
       <i class="fas fa-cloud-upload-alt"></i>
       <p>Перетащи или кликни</p>
-      <input type="file" id="f" style="display:none"/>
-      <button onclick="document.getElementById('f').click()">Выбрать</button>
+      <input type="file" id="fileInput" style="display:none"/>
+      <button onclick="document.getElementById('fileInput').click()">ВЫБРАТЬ ФАЙЛ</button>
     </div>
-    <div class="prog" id="prog">
+    <div class="prog" id="progress">
       <div class="bar"><div class="fill" id="fill"></div></div>
-      <div class="ptxt" id="ptxt">0%</div>
+      <div class="ptxt" id="percent">0%</div>
     </div>
-    <div class="res" id="res">
-      <p>Готово! Ссылка:</p>
+    <div class="res" id="result">
+      <p><i class="fas fa-check-circle" style="color:#00ff88"></i> Готово! Ссылка:</p>
       <input type="text" id="link" readonly/>
+      <p style="font-size:12px;margin-top:8px;color:var(--tl)">Клик → скачивание на Рабочий стол</p>
     </div>
   </div>
 
   <script>
-    const dz = document.getElementById('dz'), f = document.getElementById('f'), prog = document.getElementById('prog'), fill = document.getElementById('fill'), ptxt = document.getElementById('ptxt'), res = document.getElementById('res'), link = document.getElementById('link');
-    ['dragover','dragenter'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add('dragover')}));
-    ['dragleave','drop'].forEach(e=>dz.addEventListener(e,ev=>dz.classList.remove('dragover')));
-    dz.addEventListener('drop',e=>{e.preventDefault();upload(e.dataTransfer.files[0])});
-    dz.addEventListener('click',()=>f.click());
-    f.addEventListener('change',()=>{upload(f.files[0])});
-    function upload(file){
-      const fd=new FormData();fd.append('file',file);
-      prog.style.display='block';res.style.display='none';
-      dz.innerHTML='<i class="fas fa-spinner fa-spin"></i><p>Загружаем...</p>';
-      const x=new XMLHttpRequest();x.open('POST','/upload');
-      x.upload.onprogress=e=>{if(e.lengthComputable){const p=(e.loaded/e.total)*100;fill.style.width=p+'%';ptxt.textContent=Math.round(p)+'%'}};
-      x.onload=()=>{if(x.status===200){const d=JSON.parse(x.responseText);link.value=location.href+d.id;res.style.display='block';prog.style.display='none';dz.innerHTML='<i class="fas fa-check"></i><p>Готово!</p><button onclick="document.getElementById(\'f\').click()">Ещё</button>'}};
-      x.send(fd);
+    const dropzone = document.getElementById('dz');
+    const fileInput = document.getElementById('fileInput');
+    const progress = document.getElementById('progress');
+    const fill = document.getElementById('fill');
+    const percent = document.getElementById('percent');
+    const result = document.getElementById('result');
+    const link = document.getElementById('link');
+
+    // Перетаскивание
+    ['dragover', 'dragenter'].forEach(event => {
+      dropzone.addEventListener(event, e => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(event => {
+      dropzone.addEventListener(event, e => {
+        dropzone.classList.remove('dragover');
+      });
+    });
+
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file) uploadFile(file);
+    });
+
+    // Клик
+    dropzone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (file) uploadFile(file);
+    });
+
+    // Загрузка
+    function uploadFile(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      progress.style.display = 'block';
+      result.style.display = 'none';
+      dropzone.innerHTML = '<i class="fas fa-spinner fa-spin"></i><p>Загружаем...</p>';
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/upload');
+
+      xhr.upload.onprogress = e => {
+        if (e.lengthComputable) {
+          const p = (e.loaded / e.total) * 100;
+          fill.style.width = p + '%';
+          percent.textContent = Math.round(p) + '%';
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          link.value = location.href + data.id;
+          result.style.display = 'block';
+          progress.style.display = 'none';
+          dropzone.innerHTML = '<i class="fas fa-check"></i><p>Готово!</p><button onclick="document.getElementById(\'fileInput\').click()">ЕЩЁ</button>';
+        } else {
+          dropzone.innerHTML = '<p style="color:#ff6b6b">Ошибка загрузки</p><button onclick="location.reload()">Попробовать снова</button>';
+          progress.style.display = 'none';
+        }
+      };
+
+      xhr.onerror = () => {
+        dropzone.innerHTML = '<p style="color:#ff6b6b">Нет соединения</p><button onclick="location.reload()">Попробовать снова</button>';
+        progress.style.display = 'none';
+      };
+
+      xhr.send(formData);
     }
   </script>
 </body>
@@ -102,29 +164,54 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Загрузка
+// ЗАГРУЗКА
 app.post('/upload', upload.single('file'), (req, res) => {
   const id = req.file.filename.split('.')[0];
-  const meta = {name: req.file.originalname, size: req.file.size, uploaded: new Date().toISOString()};
+  const meta = {
+    name: req.file.originalname,
+    size: req.file.size,
+    uploaded: new Date().toISOString()
+  };
   fs.writeJsonSync(path.join(UPLOAD_DIR, id + '.json'), meta);
+
+  // Удаление через 7 дней
   setTimeout(() => {
     fs.remove(path.join(UPLOAD_DIR, id + path.extname(req.file.originalname))).catch(() => {});
     fs.remove(path.join(UPLOAD_DIR, id + '.json')).catch(() => {});
   }, 7 * 24 * 60 * 60 * 1000);
+
   res.json({ id });
 });
 
-// Страница скачивания
+// СКАЧИВАНИЕ — СТРАНИЦА
 app.get('/:id', (req, res) => {
   const id = req.params.id;
   const metaPath = path.join(UPLOAD_DIR, id + '.json');
-  if (!fs.existsSync(metaPath)) return res.status(404).send('Файл удалён');
+  if (!fs.existsSync(metaPath)) return res.status(404).send('<h1 style="color:#ff6b6b">Файл удалён</h1><a href="/">На главную</a>');
   const meta = fs.readJsonSync(metaPath);
   const sizeMB = (meta.size / (1024 * 1024)).toFixed(1);
-  res.send(`<html><head><title>${meta.name}</title><style>body{font-family:Arial;background:#0f0f23;color:#e2e8f0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}.c{background:#1a1a2e;padding:40px;border-radius:24px;text-align:center;max-width:400px}.btn{margin-top:20px;padding:12px 24px;background:#6366f1;color:white;text-decoration:none;border-radius:8px}</style></head><body><div class="c"><h2>${meta.name}</h2><p><strong>${sizeMB} МБ</strong></p><p>Скачивание через 2 сек...</p><a href="/dl/${id}" class="btn">СКАЧАТЬ</a></div><script>setTimeout(() => location.href="/dl/${id}", 2000);</script></body></html>`);
+  res.send(`
+<!DOCTYPE html><html><head><title>${meta.name}</title>
+<style>
+  body{font-family:'Inter',sans-serif;background:#0a0a1a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .c{background:#1a1a2e;padding:40px;border-radius:24px;max-width:400px;text-align:center;box-shadow:0 20px 40px rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2)}
+  h2{margin:16px 0;font-size:22px;color:#00d4ff}
+  .m{color:#94a3b8;font-size:15px;margin:8px 0}
+  .btn{display:inline-block;margin-top:24px;padding:16px 32px;background:linear-gradient(90deg,#00d4ff,#00ff88);color:#0a0a1a;text-decoration:none;border-radius:12px;font-weight:700;font-size:18px;transition:all .3s}
+  .btn:hover{transform:translateY(-4px);box-shadow:0 12px 24px rgba(0,212,255,.4)}
+</style></head>
+<body><div class="c">
+  <h2>${meta.name}</h2>
+  <div class="m"><strong>${sizeMB} МБ</strong></div>
+  <div class="m">Скачивание через 2 сек...</div>
+  <a href="/dl/${id}" class="btn">СКАЧАТЬ</a>
+</div>
+<script>setTimeout(() => location.href="/dl/${id}", 2000);</script>
+</body></html>
+  `);
 });
 
-// Скачивание
+// СКАЧИВАНИЕ — ФАЙЛ
 app.get('/dl/:id', (req, res) => {
   const id = req.params.id;
   const metaPath = path.join(UPLOAD_DIR, id + '.json');
@@ -135,7 +222,7 @@ app.get('/dl/:id', (req, res) => {
   res.sendFile(filePath);
 });
 
-// ВАЖНО: 0.0.0.0 + PORT
+// ЗАПУСК — 100% ДЛЯ RAILWAY
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('Fileport запущен на порту ' + PORT);
+  console.log('FASTDROP запущен на порту ' + PORT);
 });

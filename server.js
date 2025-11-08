@@ -7,7 +7,7 @@ const moment = require('moment');
 
 const app = express();
 
-// Railway требует: слушать на 0.0.0.0 и process.env.PORT
+// Порт для Railway
 const PORT = process.env.PORT || 3000;
 const UPLOAD_DIR = '/app/uploads';
 fs.ensureDirSync(UPLOAD_DIR);
@@ -102,7 +102,7 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Загрузка файла
+// Загрузка
 app.post('/upload', upload.single('file'), (req, res) => {
   const id = req.file.filename.split('.')[0];
   const meta = {name: req.file.originalname, size: req.file.size, uploaded: new Date().toISOString()};
@@ -121,23 +121,7 @@ app.get('/:id', (req, res) => {
   if (!fs.existsSync(metaPath)) return res.status(404).send('Файл удалён');
   const meta = fs.readJsonSync(metaPath);
   const sizeMB = (meta.size / (1024 * 1024)).toFixed(1);
-  res.send(`
-<!DOCTYPE html><html><head><title>${meta.name}</title>
-<style>
-  body{font-family:Arial;background:#0f0f23;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-  .c{background:#1a1a2e;padding:40px;border-radius:24px;max-width:400px;text-align:center}
-  h2{margin:16px 0;font-size:20px}
-  .btn{margin-top:24px;padding:16px 32px;background:#6366f1;color:white;text-decoration:none;border-radius:12px;font-weight:600}
-</style></head>
-<body><div class="c">
-  <h2>${meta.name}</h2>
-  <p><strong>${sizeMB} МБ</strong></p>
-  <p>Скачивание через 2 сек...</p>
-  <a href="/dl/${id}" class="btn">СКАЧАТЬ</a>
-</div>
-<script>setTimeout(() => location.href="/dl/${id}", 2000);</script>
-</body></html>
-  `);
+  res.send(`<html><head><title>${meta.name}</title><style>body{font-family:Arial;background:#0f0f23;color:#e2e8f0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}.c{background:#1a1a2e;padding:40px;border-radius:24px;text-align:center;max-width:400px}.btn{margin-top:20px;padding:12px 24px;background:#6366f1;color:white;text-decoration:none;border-radius:8px}</style></head><body><div class="c"><h2>${meta.name}</h2><p><strong>${sizeMB} МБ</strong></p><p>Скачивание через 2 сек...</p><a href="/dl/${id}" class="btn">СКАЧАТЬ</a></div><script>setTimeout(() => location.href="/dl/${id}", 2000);</script></body></html>`);
 });
 
 // Скачивание
@@ -151,7 +135,7 @@ app.get('/dl/:id', (req, res) => {
   res.sendFile(filePath);
 });
 
-// ЗАПУСК СЕРВЕРА — ВАЖНО!
+// ВАЖНО: 0.0.0.0 + PORT
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(\`Fileport запущен на порту \${PORT}\`);
+  console.log('Fileport запущен на порту ' + PORT);
 });

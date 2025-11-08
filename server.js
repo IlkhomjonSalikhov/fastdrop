@@ -8,24 +8,25 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public')); // ← для icon.png, sw.js
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(__dirname)); // ← ДЛЯ icon.png, sw.js
 
 const PORT = process.env.PORT || 3000;
-const UPLOAD_DIR = '/app/uploads';
+const UPLOAD_DIR = path.join(__dirname, 'uploads');
 fs.ensureDirSync(UPLOAD_DIR);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => {
     const id = uuidv4().slice(0, 12);
-    cb(null, id + path.extname(file.originalname));
+    cb(null, id + '__' + file.originalname);
   }
 });
 const upload = multer({ storage });
 
+// === ГЛАВНАЯ СТРАНИЦА ===
 app.get('/', (req, res) => {
-  res.send(`
-<!DOCTYPE html>
+  res.send(`<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -53,10 +54,10 @@ app.get('/', (req, res) => {
     .hero{text-align:center;padding:60px 20px}
     .hero h1{font-size:52px;font-weight:900;background:var(--g);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
     .hero p{font-size:20px;color:var(--tl);font-weight:500}
-    .box{background:var(--c);border-radius:28px;padding:48px;box-shadow:0 30px 60px rgba(0,212,255,.2);border:1px solid rgba(0,212,255,.3);backdrop-filter:blur(16px)}
+    .box{background:var(--c);border-radius:28px;padding:48px;box-shadow:0 30px 60px rgba(0,212,255,.2);border:1px solid rgba(0,212,255,.3)}
     h2{font-size:32px;font-weight:800;background:var(--g);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:24px;text-align:center}
-    .dz{border:4px dashed var(--p);border-radius:20px;padding:64px;text-align:center;cursor:pointer;transition:all .4s;position:relative;overflow:hidden}
-    .dz:hover{border-color:var(--s);background:rgba(0,255,136,.1);transform:scale(1.02);box-shadow:0 30px 60px rgba(0,212,255,.5)}
+    .dz{border:4px dashed var(--p);border-radius:20px;padding:64px;text-align:center;cursor:pointer;transition:all .4s}
+    .dz:hover{border-color:var(--s);background:rgba(0,255,136,.1);transform:scale(1.02)}
     .dz.dragover{border-color:var(--s);animation:pulse 1.2s infinite}
     @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
     .dz i{font-size:72px;color:var(--p);margin-bottom:20px;animation:float 3s infinite}
@@ -68,8 +69,8 @@ app.get('/', (req, res) => {
     .ptxt{text-align:center;margin-top:12px;font-size:16px;color:var(--tl);font-weight:700}
     .res{margin-top:32px;padding:28px;background:rgba(0,255,136,.15);border-radius:16px;border:1px solid rgba(0,255,136,.4);display:none}
     .res input{width:100%;padding:18px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);border-radius:12px;color:white;font-family:monospace;margin:12px 0;font-size:17px}
-    button{background:var(--g);color:#000;border:none;padding:18px 48px;border-radius:16px;font-weight:800;cursor:pointer;transition:all .3s;font-size:18px;box-shadow:0 12px 30px rgba(0,212,255,.4)}
-    button:hover{transform:translateY(-6px);box-shadow:0 20px 40px rgba(0,212,255,.6)}
+    button{background:var(--g);color:#000;border:none;padding:18px 48px;border-radius:16px;font-weight:800;cursor:pointer;transition:all .3s;font-size:18px}
+    button:hover{transform:translateY(-6px)}
     .copy-btn,.qr-btn{margin:6px;padding:14px 28px;font-size:16px;border-radius:12px;font-weight:700}
     .copy-btn{background:var(--p);color:#000}
     .qr-btn{background:#ff6b6b;color:white}
@@ -80,7 +81,7 @@ app.get('/', (req, res) => {
     .preview-item img{width:100%;height:140px;object-fit:cover;border-radius:12px}
     .preview-name{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.8);color:white;font-size:13px;padding:8px;text-align:center;font-weight:600}
     .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:32px;margin:80px 0;text-align:center}
-    .stat h3{font-size:42px;font-weight:900;color:var(--p);margin-bottom:8px;opacity:0;transform:translateY(20px)}
+    .stat h3{font-size:42px;font-weight:900;color:var(--p);margin-bottom:8px}
     .stat p{font-size:16px;color:var(--tl);font-weight:600}
     .stat-icon{font-size:36px;color:var(--s);margin-bottom:12px}
     .premium{background:var(--g);color:#000;padding:40px;border-radius:24px;text-align:center;margin:60px 0}
@@ -92,10 +93,8 @@ app.get('/', (req, res) => {
     .btn-premium{background:#000;color:white;padding:18px 50px;border-radius:16px;font-weight:900;font-size:20px}
     footer{text-align:center;padding:40px;color:var(--tl);font-size:15px}
     footer a{color:var(--p);text-decoration:none;font-weight:600}
-    @media (max-width:768px){
-      .hero h1{font-size:40px}.dz{padding:48px}.dz i{font-size:56px}
-      .stats{grid-template-columns:1fr;gap:24px}
-    }
+    .tab-content{display:none}
+    .tab-content.active{display:block}
   </style>
 </head>
 <body>
@@ -103,15 +102,15 @@ app.get('/', (req, res) => {
     <nav>
       <div class="logo">FASTDROP</div>
       <div class="tabs">
-        <div class="tab active" onclick="showTab('home')">Главная</div>
-        <div class="tab" onclick="showTab('premium')">Премиум</div>
-        <div class="tab" onclick="showTab('privacy')">Конфиденциальность</div>
+        <div class="tab active" data-tab="home">Главная</div>
+        <div class="tab" data-tab="premium">Премиум</div>
+        <div class="tab" data-tab="privacy">Конфиденциальность</div>
       </div>
     </nav>
   </header>
 
   <main>
-    <div id="home" class="tab-content">
+    <div id="home" class="tab-content active">
       <div class="hero">
         <h1>FASTDROP</h1>
         <p>До 200 ГБ • Бесплатно • 7 дней • Без регистрации</p>
@@ -119,7 +118,7 @@ app.get('/', (req, res) => {
 
       <div class="box">
         <h2>Кидай — и забывай</h2>
-        <div class="dz" id="dz">
+        <div class="dz" id="dropzone">
           <i class="fas fa-cloud-upload-alt"></i>
           <p>Перетащи или кликни</p>
           <input type="file" id="fileInput" style="display:none" multiple/>
@@ -139,7 +138,6 @@ app.get('/', (req, res) => {
           </div>
           <div class="qrcode" id="qrcode"></div>
           <p class="counter">Загрузок: <span id="downloads">0</span></p>
-          <p style="font-size:13px;margin-top:12px;color:var(--tl)">Клик → скачивание на Рабочий стол</p>
         </div>
       </div>
 
@@ -156,14 +154,14 @@ app.get('/', (req, res) => {
       </div>
 
       <div class="stats">
-        <div class="stat"><div class="stat-icon"><i class="fas fa-paper-plane"></i></div><h3 data-count="127482">0</h3><p>Файлов отправлено</p></div>
-        <div class="stat"><div class="stat-icon"><i class="fas fa-hdd"></i></div><h3 data-count="89200">0</h3><p>ТБ передано</p></div>
-        <div class="stat"><div class="stat-icon"><i class="fas fa-users"></i></div><h3 data-count="42819">0</h3><p>Пользователей</p></div>
-        <div class="stat"><div class="stat-icon"><i class="fas fa-tachometer-alt"></i></div><h3 data-count="500">0</h3><p>Мбит/с</p></div>
+        <div class="stat"><div class="stat-icon"><i class="fas fa-paper-plane"></i></div><h3><span class="count" data-target="127482">0</span></h3><p>Файлов отправлено</p></div>
+        <div class="stat"><div class="stat-icon"><i class="fas fa-hdd"></i></div><h3><span class="count" data-target="89">0</span> ТБ</h3><p>Передано данных</p></div>
+        <div class="stat"><div class="stat-icon"><i class="fas fa-users"></i></div><h3><span class="count" data-target="42819">0</span></h3><p>Пользователей</p></div>
+        <div class="stat"><div class="stat-icon"><i class="fas fa-tachometer-alt"></i></div><h3><span class="count" data-target="500">0</span> Мбит/с</h3><p>Скорость</p></div>
       </div>
     </div>
 
-    <div id="premium" class="tab-content" style="display:none">
+    <div id="premium" class="tab-content">
       <h2 style="text-align:center">FASTDROP PRO</h2>
       <div class="premium" style="max-width:600px;margin:40px auto">
         <div class="price">99 ₽ / месяц</div>
@@ -178,7 +176,7 @@ app.get('/', (req, res) => {
       </div>
     </div>
 
-    <div id="privacy" class="tab-content" style="display:none">
+    <div id="privacy" class="tab-content">
       <h2 style="text-align:center">Политика конфиденциальности</h2>
       <div style="max-width:800px;margin:40px auto;color:var(--tl);line-height:1.8;font-size:16px">
         <p>Мы <strong>не храним</strong> ваши файлы дольше 7 дней.</p>
@@ -191,47 +189,54 @@ app.get('/', (req, res) => {
   </main>
 
   <footer>
-    © 2025 FASTDROP • <a href="#" onclick="showTab('privacy')">Политика конфиденциальности</a>
+    © 2025 FASTDROP • <a href="#" onclick="switchTab('privacy')">Политика конфиденциальности</a>
   </footer>
 
   <script>
-    // Вкладки
-    function showTab(id) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-      document.querySelector(\`[onclick="showTab('\${id}')"]\`).classList.add('active');
-      document.getElementById(id).style.display = 'block';
-      if (id === 'home') animateStats();
+    // ВКЛАДКИ
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+        if (tab.dataset.tab === 'home') animateStats();
+      });
+    });
+
+    function switchTab(id) {
+      document.querySelector(\`.tab[data-tab="\${id}"]\`).click();
     }
 
-    // Анимация статистики
+    // АНИМАЦИЯ СТАТИСТИКИ
     function animateStats() {
-      document.querySelectorAll('.stat h3').forEach(el => {
-        el.style.opacity = '1';
-        el.style.transform = 'translateY(0)';
-        const count = el.getAttribute('data-count');
+      document.querySelectorAll('.count').forEach(counter => {
+        const target = +counter.dataset.target;
+        const isTB = counter.parentElement.innerHTML.includes('ТБ');
         let start = 0;
         const duration = 2000;
-        const step = () => {
-          const progress = Math.min((Date.now() - startTime) / duration, 1);
-          const current = Math.floor(progress * count);
-          el.textContent = current.toLocaleString();
-          if (progress < 1) requestAnimationFrame(step);
-        };
-        const startTime = Date.now();
-        requestAnimationFrame(step);
+        const increment = target / (duration / 16);
+        const timer = setInterval(() => {
+          start += increment;
+          if (start >= target) {
+            counter.textContent = isTB ? target + ' ТБ' : target.toLocaleString();
+            clearInterval(timer);
+          } else {
+            counter.textContent = isTB ? Math.floor(start) + ' ТБ' : Math.floor(start).toLocaleString();
+          }
+        }, 16);
       });
     }
 
-    // Загрузка
-    const dropzone = document.getElementById('dz');
+    // ЗАГРУЗКА
+    const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('fileInput');
     const preview = document.getElementById('preview');
     const progress = document.getElementById('progress');
     const fill = document.getElementById('fill');
     const percent = document.getElementById('percent');
     const result = document.getElementById('result');
-    const link = document.getElementById('link');
+    const linkInput = document.getElementById('link');
     const qrcode = document.getElementById('qrcode');
     const downloads = document.getElementById('downloads');
     let startTime;
@@ -260,7 +265,7 @@ app.get('/', (req, res) => {
 
     function uploadFiles(files) {
       const formData = new FormData();
-      Array.from(files).forEach((f, i) => formData.append(\`file\${i}\`, f));
+      Array.from(files).forEach((f, i) => formData.append('file', f));
       progress.style.display = 'block'; result.style.display = 'none';
       dropzone.innerHTML = '<i class="fas fa-spinner fa-spin"></i><p>Загружаем...</p>';
       startTime = Date.now();
@@ -271,7 +276,7 @@ app.get('/', (req, res) => {
         if (e.lengthComputable) {
           const p = (e.loaded / e.total) * 100;
           const elapsed = (Date.now() - startTime) / 1000;
-          const speed = elapsed > 0 ? (e.loaded / 1024 / 1024 / elapsed).toFixed(1) : 0;
+          const speed = (e.loaded / 1024 / 1024 / elapsed).toFixed(1);
           fill.style.width = p + '%';
           percent.textContent = Math.round(p) + '% • ' + speed + ' МБ/с';
         }
@@ -279,28 +284,93 @@ app.get('/', (req, res) => {
       xhr.onload = () => {
         if (xhr.status === 200) {
           const data = JSON.parse(xhr.responseText);
-          link.value = location.href + data.id;
+          linkInput.value = location.href + data.id;
           result.style.display = 'block'; progress.style.display = 'none';
           dropzone.innerHTML = '<i class="fas fa-check"></i><p>Готово!</p><button onclick="document.getElementById(\'fileInput\').click()">ЕЩЁ</button>';
-          fetchDownloads(data.id);
+          pollDownloads(data.id);
         }
       };
       xhr.send(formData);
     }
 
-    function copyLink() { link.select(); document.execCommand('copy'); alert('Скопировано!'); }
-    function showQR() { qrcode.style.display = 'block'; new QRCode(qrcode, { text: link.value, width: 140, height: 140, colorDark: "#00ff88", colorLight: "#1a1a2e" }); }
-    function fetchDownloads(id) { fetch('/stats/' + id).then(r => r.json()).then(d => downloads.textContent = d.downloads || 0); }
+    function copyLink() { linkInput.select(); document.execCommand('copy'); alert('Скопировано!'); }
+    function showQR() { qrcode.style.display = 'block'; new QRCode(qrcode, { text: linkInput.value, width: 140, height: 140, colorDark: "#00ff88", colorLight: "#1a1a2e" }); }
+    function pollDownloads(id) {
+      setInterval(() => {
+        fetch('/stats/' + id).then(r => r.json()).then(d => downloads.textContent = d.downloads || 0);
+      }, 3000);
+    }
 
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
     window.addEventListener('load', () => setTimeout(animateStats, 500));
   </script>
 </body>
-</html>
-  `);
+</html>`);
 });
 
-// Остальные роуты (upload, dl, stats, manifest, sw) — как в прошлом коде
-// (вставь из предыдущего ответа — они идентичны)
+// === ЗАГРУЗКА ===
+app.post('/upload', upload.array('file'), (req, res) => {
+  try {
+    const id = uuidv4().slice(0, 12);
+    const files = req.files;
+    const meta = {
+      names: files.map(f => f.originalname),
+      size: files.reduce((a, f) => a + f.size, 0),
+      uploaded: new Date().toISOString(),
+      downloads: 0
+    };
+    const metaPath = path.join(UPLOAD_DIR, id + '.json');
+    fs.writeJsonSync(metaPath, meta);
 
-app.listen(PORT, '0.0.0.0', () => console.log('FASTDROP 11.0 — МАКСИМУМ!'));
+    // Автоудаление через 7 дней
+    setTimeout(() => {
+      files.forEach(f => fs.remove(f.path).catch(() => {}));
+      fs.remove(metaPath).catch(() => {});
+    }, 7 * 24 * 60 * 60 * 1000);
+
+    res.json({ id });
+  } catch (err) {
+    res.status(500).json({ error: 'Upload failed' });
+  }
+});
+
+// === СКАЧИВАНИЕ ===
+app.get('/:id', (req, res) => {
+  const id = req.params.id;
+  const metaPath = path.join(UPLOAD_DIR, id + '.json');
+  if (!fs.existsSync(metaPath)) return res.status(404).send('Файл удалён');
+  const meta = fs.readJsonSync(metaPath);
+  meta.downloads++;
+  fs.writeJsonSync(metaPath, meta);
+
+  const file = fs.readdirSync(UPLOAD_DIR).find(f => f.startsWith(id + '__'));
+  if (!file) return res.status(404).send('Файл не найден');
+  const filePath = path.join(UPLOAD_DIR, file);
+  const name = file.split('__')[1];
+  res.download(filePath, name);
+});
+
+// === СТАТИСТИКА ===
+app.get('/stats/:id', (req, res) => {
+  const metaPath = path.join(UPLOAD_DIR, req.params.id + '.json');
+  if (!fs.existsSync(metaPath)) return res.json({ downloads: 0 });
+  const meta = fs.readJsonSync(metaPath);
+  res.json({ downloads: meta.downloads });
+});
+
+// === PWA ===
+app.get('/manifest.json', (req, res) => {
+  res.json({
+    name: "FASTDROP", short_name: "FASTDROP", start_url: "/", display: "standalone",
+    background_color: "#0a0a1a", theme_color: "#00d4ff",
+    icons: [{ src: "/icon.png", sizes: "192x192", type: "image/png" }]
+  });
+});
+
+app.get('/sw.js', (req, res) => {
+  res.type('js').send(`self.addEventListener('install', e => self.skipWaiting());`);
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(\`FASTDROP 12.0 — ВСЁ РАБОТАЕТ! http://localhost:\${PORT}\`);
+});

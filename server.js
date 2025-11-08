@@ -9,7 +9,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(__dirname)); // ← ДЛЯ icon.png, sw.js
+app.use(express.static(__dirname));
 
 const PORT = process.env.PORT || 3000;
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
@@ -24,7 +24,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// === ГЛАВНАЯ СТРАНИЦА ===
+// === ГЛАВНАЯ ===
 app.get('/', (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="ru">
@@ -193,7 +193,6 @@ app.get('/', (req, res) => {
   </footer>
 
   <script>
-    // ВКЛАДКИ
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -205,10 +204,9 @@ app.get('/', (req, res) => {
     });
 
     function switchTab(id) {
-      document.querySelector(\`.tab[data-tab="\${id}"]\`).click();
+      document.querySelector('.tab[data-tab="' + id + '"]').click();
     }
 
-    // АНИМАЦИЯ СТАТИСТИКИ
     function animateStats() {
       document.querySelectorAll('.count').forEach(counter => {
         const target = +counter.dataset.target;
@@ -228,7 +226,6 @@ app.get('/', (req, res) => {
       });
     }
 
-    // ЗАГРУЗКА
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('fileInput');
     const preview = document.getElementById('preview');
@@ -254,7 +251,7 @@ app.get('/', (req, res) => {
           reader.onload = e => {
             const div = document.createElement('div');
             div.className = 'preview-item';
-            div.innerHTML = \`<img src="\${e.target.result}"><div class="preview-name">\${file.name}</div>\`;
+            div.innerHTML = '<img src="' + e.target.result + '"><div class="preview-name">' + file.name + '</div>';
             preview.appendChild(div);
           };
           reader.readAsDataURL(file);
@@ -322,7 +319,6 @@ app.post('/upload', upload.array('file'), (req, res) => {
     const metaPath = path.join(UPLOAD_DIR, id + '.json');
     fs.writeJsonSync(metaPath, meta);
 
-    // Автоудаление через 7 дней
     setTimeout(() => {
       files.forEach(f => fs.remove(f.path).catch(() => {}));
       fs.remove(metaPath).catch(() => {});
@@ -368,9 +364,10 @@ app.get('/manifest.json', (req, res) => {
 });
 
 app.get('/sw.js', (req, res) => {
-  res.type('js').send(`self.addEventListener('install', e => self.skipWaiting());`);
+  res.type('js').send("self.addEventListener('install', e => self.skipWaiting());");
 });
 
+// === ЗАПУСК ===
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(\`FASTDROP 12.0 — ВСЁ РАБОТАЕТ! http://localhost:\${PORT}\`);
+  console.log('FASTDROP 13.0 — РАБОТАЕТ! http://localhost:' + PORT);
 });

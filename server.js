@@ -152,4 +152,4 @@ app.get('/dl/:id', (req, res) => {
   res.sendFile(filePath);
 });
 
-app.listen(PORT, () => console.log('Fileport запущен!'));
+app.listen(PORT, '0.0.0.0', () => console.log('Fileport запущен!'));

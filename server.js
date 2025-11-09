@@ -25,14 +25,13 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // === СТРАНИЦЫ ===
-app.get('/', (req, res) => res.send(getPage('home', false)));
-app.get('/premium', (req, res) => res.send(getPage('premium', true)));
-app.get('/about', (req, res) => res.send(getPage('about', false)));
+app.get('/', (req, res) => res.send(getMainPage(false)));
+app.get('/pro', (req, res) => res.send(getProPage(true)));
+app.get('/about', (req, res) => res.send(getAboutPage(false)));
 
-// Генерация страницы
-function getPage(activeTab, isPro) {
+// Главная страница (структура как fileport.io)
+function getMainPage(isPro) {
   const proBadge = isPro ? '<span class="pro-badge">PRO</span>' : '';
-  const themeToggle = isPro ? '<div class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></div>' : '';
   const controls = isPro ? `
     <div class="controls">
       <select id="expires">
@@ -49,94 +48,6 @@ function getPage(activeTab, isPro) {
     </div>` : '';
   const installBtn = '<button class="install-btn" id="installBtn" style="display:none">Установить как app</button>';
 
-  // Сразу числа — без анимации 0 → 127482
-  const statsBlock = `
-    <section class="stats-section">
-      <h2>Наша статистика</h2>
-      <div class="stats-grid">
-        <div class="stat"><h3>127482</h3><p>Файлов загружено</p></div>
-        <div class="stat"><h3>89 ТБ</h3><p>Передано данных</p></div>
-        <div class="stat"><h3>42819</h3><p>Активных пользователей</p></div>
-        <div class="stat"><h3>500 Мбит/с</h3><p>Средняя скорость</p></div>
-      </div>
-    </section>`;
-
-  const homeContent = `
-    <div class="hero">
-      <h1>FASTDROP${proBadge}</h1>
-      <p>До 200 ГБ • Бесплатно • 7 дней • Без регистрации</p>
-    </div>
-    <div class="box upload-box">
-      <h2>Кидай файл — получай ссылку</h2>
-      <div class="dz" id="dropzone">
-        <i class="fas fa-cloud-upload-alt"></i>
-        <p>Перетащи или кликни</p>
-        <input type="file" id="fileInputFiles" style="display:none" multiple />
-        <input type="file" id="fileInputFolder" style="display:none" webkitdirectory />
-        <div class="select-buttons">
-          <button onclick="document.getElementById('fileInputFiles').click()">Выбрать файлы</button>
-          <button onclick="document.getElementById('fileInputFolder').click()">Выбрать папку</button>
-        </div>
-      </div>
-      ${controls}
-      <div id="preview" class="preview-grid" style="display:none"></div>
-      <div class="prog" id="progress" style="display:none">
-        <div class="bar"><div class="fill" id="fill"></div><div class="speed" id="speed">0 МБ/с</div></div>
-        <div class="ptxt" id="percent">0%</div>
-      </div>
-      <div class="res" id="result" style="display:none">
-        <p><i class="fas fa-check-circle"></i> Готово!</p>
-        <input type="text" id="link" readonly />
-        <div class="res-buttons">
-          <button class="copy-btn" onclick="copyLink()">COPY</button>
-          <button class="qr-btn" onclick="showQR()">QR</button>
-        </div>
-        <div class="qrcode" id="qrcode" style="display:none"></div>
-        <p class="counter">Скачиваний: <span id="downloads">0</span></p>
-        ${proStats}
-      </div>
-    </div>
-    ${installBtn}
-    ${statsBlock}`;
-
-  const premiumContent = `
-    <div class="hero">
-      <h1>FASTDROP PRO</h1>
-      <p>99 ₽ / месяц • 999 ₽ / год (-17%)</p>
-    </div>
-    <div class="box">
-      <h2>Что даёт PRO?</h2>
-      <ul class="features-list">
-        <li><i class="fas fa-infinity"></i> Файлы навсегда</li>
-        <li><i class="fas fa-lock"></i> Защита паролем</li>
-        <li><i class="fas fa-clock"></i> Срок жизни на выбор</li>
-        <li><i class="fas fa-chart-line"></i> Статистика (IP, время)</li>
-        <li><i class="fas fa-palette"></i> Темы (тёмная/светлая)</li>
-      </ul>
-      <button class="btn-premium full-width" onclick="alert('Оплата в разработке')">КУПИТЬ PRO</button>
-    </div>
-    ${statsBlock}`;
-
-  const aboutContent = `
-    <div class="hero">
-      <h1>О FASTDROP</h1>
-      <p>Простой и быстрый обмен файлами без лишних действий.</p>
-    </div>
-    <div class="box">
-      <h2>Как это работает?</h2>
-      <p>1. Загружаешь файл или папку<br>
-         2. Получаешь ссылку<br>
-         3. Делишься — и всё!</p>
-      <p style="margin-top:1rem">Без аккаунта. Без рекламы. Без логов.</p>
-    </div>
-    <div class="box">
-      <h2>Контакты</h2>
-      <p>Email: support@fastdrop.ru<br>Telegram: @fastdrop_support</p>
-    </div>`;
-
-  const contentMap = { home: homeContent, premium: premiumContent, about: aboutContent };
-  const pageContent = contentMap[activeTab];
-
   return `<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -150,15 +61,11 @@ function getPage(activeTab, isPro) {
   <meta name="theme-color" content="#0a0a1a">
   <style>
     :root{--p:#00d4ff;--s:#00ff88;--bg:#0a0a1a;--c:#1a1a2e;--t:#e2e8f0;--tl:#94a3b8;--g:linear-gradient(135deg,#00d4ff,#00ff88)}
-    [data-theme="light"]{--p:#007bff;--s:#28a745;--bg:#f8f9fa;--c:#ffffff;--t:#212529;--tl:#6c757d;--g:linear-gradient(135deg,#007bff,#28a745)}
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t);min-height:100vh;transition:all .3s}
     header{background:var(--c);border-bottom:1px solid rgba(0,212,255,.2);position:sticky;top:0;z-index:100}
     nav{display:flex;justify-content:space-between;align-items:center;padding:14px 24px;max-width:1200px;margin:0 auto}
     .logo{font-size:22px;font-weight:800;background:var(--g);-webkit-background-clip:text;-webkit-text-fill-color:transparent;cursor:pointer}
-    .pro-badge{background:#ffd700;color:#000;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-left:4px;vertical-align:middle}
-    .theme-toggle{cursor:pointer;font-size:20px;color:var(--tl);transition:.3s}
-    .theme-toggle:hover{color:var(--t)}
     .tabs{display:flex;gap:20px}
     .tab{font-size:14px;color:var(--tl);cursor:pointer;padding:8px 12px;position:relative;font-weight:600;transition:all .3s;border-radius:8px;text-decoration:none}
     .tab:hover{color:var(--t);background:rgba(255,255,255,.05)}
@@ -200,11 +107,12 @@ function getPage(activeTab, isPro) {
     .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:20px}
     .stat h3{font-size:32px;font-weight:800;color:var(--p);margin-bottom:4px}
     .stat p{font-size:13px;color:var(--tl);font-weight:500}
-    .features-list{list-style:none;margin:20px 0}
-    .features-list li{margin:12px 0;font-size:15px;color:var(--t);display:flex;align-items:center;gap:10px}
-    .btn-premium{background:#000;color:white;padding:14px 40px;border-radius:12px;font-weight:800;font-size:16px}
-    .full-width{width:100%;max-width:300px;margin:20px auto;display:block}
-    .install-btn{display:none;background:var(--s);color:#000;padding:12px 24px;border-radius:12px;font-weight:700;margin:20px auto;width:max-content}
+    .premium-section{margin:40px 0;padding:24px;background:var(--g);color:#000;border-radius:12px;text-align:center}
+    .premium-section h2{font-size:22px;margin-bottom:12px;color:#000;-webkit-text-fill-color:#000;background:none}
+    .premium-section p{font-size:15px;margin-bottom:16px}
+    .premium-section button{background:#000;color:white}
+    .list{list-style:none;margin:16px 0}
+    .list li{margin:8px 0;font-size:15px;display:flex;align-items:center;gap:8px}
     footer{text-align:center;padding:32px;color:var(--tl);font-size:13px}
     footer a{color:var(--p);text-decoration:none;font-weight:600}
   </style>
@@ -212,46 +120,80 @@ function getPage(activeTab, isPro) {
 <body data-theme="dark">
   <header>
     <nav>
-      <a href="/" class="logo">FASTDROP${proBadge}</a>
-      <div style="display:flex;gap:16px;align-items:center">
-        ${themeToggle}
-        <div class="tabs">
-          <a href="/" class="tab ${activeTab==='home'?'active':''}">Главная</a>
-          <a href="/premium" class="tab ${activeTab==='premium'?'active':''}">Премиум</a>
-          <a href="/about" class="tab ${activeTab==='about'?'active':''}">О нас</a>
-        </div>
+      <div class="logo" onclick="location.href='/'">FASTDROP</div>
+      <div class="tabs">
+        <a href="/" class="tab active">Главная</a>
+        <a href="/pro" class="tab">PRO</a>
+        <a href="/about" class="tab">О нас</a>
       </div>
     </nav>
   </header>
   <main>
-    ${pageContent}
+    <div class="hero">
+      <h1>FASTDROP</h1>
+      <p>200 ГБ бесплатно • 7 дней • Без аккаунта</p>
+    </div>
+    <div class="box">
+      <h2>Загрузи файл</h2>
+      <div class="dz" id="dropzone">
+        <i class="fas fa-cloud-upload-alt"></i>
+        <p>Перетащи файлы или папку</p>
+        <input type="file" id="fileInputFiles" style="display:none" multiple />
+        <input type="file" id="fileInputFolder" style="display:none" webkitdirectory />
+        <div class="select-buttons">
+          <button onclick="document.getElementById('fileInputFiles').click()">Файлы</button>
+          <button onclick="document.getElementById('fileInputFolder').click()">Папка</button>
+        </div>
+      </div>
+      ${controls}
+      <div id="preview" class="preview-grid" style="display:none"></div>
+      <div class="prog" id="progress" style="display:none">
+        <div class="bar"><div class="fill" id="fill"></div><div class="speed" id="speed">0 МБ/с</div></div>
+        <div class="ptxt" id="percent">0%</div>
+      </div>
+      <div class="res" id="result" style="display:none">
+        <p><i class="fas fa-check-circle"></i> Готово!</p>
+        <input type="text" id="link" readonly/>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
+          <button class="copy-btn" onclick="copyLink()">COPY</button>
+          <button class="qr-btn" onclick="showQR()">QR</button>
+        </div>
+        <div class="qrcode" id="qrcode"></div>
+        <p class="counter">Скачиваний: <span id="downloads">0</span></p>
+        ${proStats}
+      </div>
+    </div>
+    <div class="premium-section">
+      <h2>PRO версия</h2>
+      <p>Навсегда • Пароль • 1 Гбит/с</p>
+      <button onclick="location.href='/pro'">Перейти в PRO</button>
+    </div>
+    <div class="stats-section">
+      <div class="stats-grid">
+        <div class="stat"><h3>127482</h3><p>Файлов</p></div>
+        <div class="stat"><h3>89 ТБ</h3><p>Передано</p></div>
+        <div class="stat"><h3>42819</h3><p>Пользователей</p></div>
+        <div class="stat"><h3>500 Мбит/с</h3><p>Скорость</p></div>
+      </div>
+    </div>
   </main>
   <footer>
-    © 2025 FASTDROP • Сделано с ❤️ в России
+    © 2025 FASTDROP
   </footer>
-
   <script>
-    // PWA
     let deferredPrompt;
     const installBtn = document.getElementById('installBtn');
     if (installBtn) {
       window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault(); deferredPrompt = e; installBtn.style.display = 'block';
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.style.display = 'block';
       });
-      installBtn.addEventListener('click', () => { deferredPrompt.prompt(); });
-    }
-
-    // Тема (PRO)
-    const themeToggle = document.getElementById('themeToggle');
-    if (themeToggle) {
-      themeToggle.addEventListener('click', () => {
-        const isDark = document.body.getAttribute('data-theme') === 'dark';
-        document.body.setAttribute('data-theme', isDark ? 'light' : 'dark');
-        themeToggle.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+      installBtn.addEventListener('click', () => {
+        deferredPrompt.prompt();
       });
     }
 
-    // Загрузка
     const dropzone = document.getElementById('dropzone');
     if (dropzone) {
       const fileInputFiles = document.getElementById('fileInputFiles');
@@ -348,7 +290,65 @@ function getPage(activeTab, isPro) {
 </html>`;
 }
 
-// === БЭКЭНД ===
+// PRO страница
+function getProPage(isPro) {
+  return getMainPage(isPro); // Reuse main with PRO features
+}
+
+// О нас
+function getAboutPage(isPro) {
+  return `<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FASTDROP — О нас</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root{--p:#00d4ff;--s:#00ff88;--bg:#0a0a1a;--c:#1a1a2e;--t:#e2e8f0;--tl:#94a3b8;--g:linear-gradient(135deg,#00d4ff,#00ff88)}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t);min-height:100vh}
+    header{background:var(--c);border-bottom:1px solid rgba(0,212,255,.2);position:sticky;top:0;z-index:100}
+    nav{display:flex;justify-content:space-between;align-items:center;padding:14px 24px;max-width:1200px;margin:0 auto}
+    .logo{font-size:22px;font-weight:800;background:var(--g);-webkit-background-clip:text;-webkit-text-fill-color:transparent;cursor:pointer}
+    .tabs{display:flex;gap:20px}
+    .tab{font-size:14px;color:var(--tl);cursor:pointer;padding:8px 12px;position:relative;font-weight:600;transition:all .3s;border-radius:8px;text-decoration:none}
+    .tab:hover{color:var(--t);background:rgba(255,255,255,.05)}
+    .tab.active{color:var(--t);font-weight:700;background:rgba(0,212,255,.15)}
+    main{max-width:1200px;margin:0 auto;padding:20px}
+    .box{background:var(--c);border-radius:20px;padding:36px;box-shadow:0 16px 32px rgba(0,212,255,.15);border:1px solid rgba(0,212,255,.2);margin:20px 0}
+    h2{font-size:26px;font-weight:700;background:var(--g);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:18px;text-align:center}
+    p{font-size:16px;color:var(--tl);text-align:center}
+    footer{text-align:center;padding:32px;color:var(--tl);font-size:13px}
+  </style>
+</head>
+<body data-theme="dark">
+  <header>
+    <nav>
+      <div class="logo" onclick="location.href='/'">FASTDROP</div>
+      <div class="tabs">
+        <a href="/" class="tab">Главная</a>
+        <a href="/pro" class="tab">PRO</a>
+        <a href="/about" class="tab active">О нас</a>
+      </div>
+    </nav>
+  </header>
+  <main>
+    <div class="box">
+      <h2>О FASTDROP</h2>
+      <p>Быстрый обмен файлами до 200 ГБ. Без регистрации. Без рекламы.</p>
+      <p style="margin-top:16px">support@fastdrop.ru</p>
+    </div>
+  </main>
+  <footer>
+    © 2025 FASTDROP
+  </footer>
+</body>
+</html>`;
+}
+
+// Бэкэнд (без изменений)
 app.post('/upload', upload.array('file'), (req, res) => {
   try {
     const id = req.body.id;
@@ -418,7 +418,7 @@ app.get('/stats/:id', (req, res) => {
   if (!fs.existsSync(metaPath)) return res.json({ downloads: 0 });
   const meta = fs.readJsonSync(metaPath);
   const response = { downloads: meta.downloads };
-  if (location.pathname.includes('premium')) {
+  if (location.pathname.includes('pro')) {
     response.lastIP = meta.ips[meta.ips.length - 1] || '?.?.?.?';
     response.lastTime = meta.times[meta.times.length - 1] || Date.now();
   }
@@ -427,12 +427,16 @@ app.get('/stats/:id', (req, res) => {
 
 app.get('/manifest.json', (req, res) => {
   res.json({
-    name: "FASTDROP", short_name: "FASTDROP", start_url: "/", display: "standalone",
-    background_color: "#0a0a1a", theme_color: "#00d4ff",
+    name: "FASTDROP",
+    short_name: "FASTDROP",
+    start_url: "/",
+    display: "standalone",
+    background_color: "#0a0a1a",
+    theme_color: "#00d4ff",
     icons: [{ src: "data:image/svg+xml,%3Csvg%3E%3C/svg%3E", sizes: "192x192", type: "image/svg+xml" }]
   });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('FASTDROP 3.1 — http://localhost:' + PORT);
+  console.log('FASTDROP на ' + PORT);
 });
